@@ -32,8 +32,8 @@
    (if (= (count periods) (count start))
      (reduce lcm (vals periods))
      (let [to (for [[l r] (map nodes ps)] ({\L l \R r} (first turns)))
-           return (into {}
-                        (for [[i p] (map-indexed vector ps)
-                              :when (str/ends-with? p "Z")]
-                          [i steps]))]
+           return (->> ps
+                       (keep-indexed (fn [i p] (when (str/ends-with? p "Z")
+                                                 [i steps])))
+                       (into {}))]
        (recur (inc steps) to (rest turns) (merge periods return))))))

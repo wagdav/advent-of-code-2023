@@ -2,9 +2,7 @@
   (:require [clojure.string :as str]))
 
 (defn empty-coords [rows]
-  (for [[i row] (map-indexed vector rows)
-        :when (= (set row) #{\.})]
-    i))
+  (keep-indexed (fn [i row] (when (= (set row) #{\.}) i)) rows))
 
 (defn transpose [v]
   (apply mapv vector v))
