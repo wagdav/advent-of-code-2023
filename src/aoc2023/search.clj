@@ -1,4 +1,4 @@
-(ns aoc2022.search
+(ns aoc2023.search
   (:require [clojure.data.priority-map :refer [priority-map-keyfn]]))
 
 (defprotocol Problem
@@ -35,6 +35,27 @@
                                        :let [c (child-node problem node action)
                                              s (:state c)]
                                        :when (not (explored s))] [s c]))))))))
+
+(defn best-first [problem f]
+  (let [start-state (initial-state problem)
+        start-node  (map->Node {:state start-state :actions [] :path [start-state] :path-cost 0})]
+    (loop [reached {start-state start-node}
+           frontier (priority-map-keyfn f start-state start-node)]
+      (when-let [[state node] (peek frontier)]
+        (if (goal? problem state)
+          node
+          (let [children (for [action (actions problem state)
+                               :let [c (child-node problem node action)
+                                     s (:state c)]
+                               :when (or (not (reached s))
+                                         (< (:path-cost c) (:path-cost (reached s))))]
+                           [s c])]
+            (recur
+              (into reached children)
+              (into (pop frontier) children))))))))
+
+(defn A* [problem h]
+  (best-first problem (fn [^Node node] (+ (:path-cost node) (h node)))))
 
 (defn breadth-first [problem]
   (let [start (initial-state problem)]
