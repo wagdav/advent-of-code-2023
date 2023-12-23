@@ -11,7 +11,7 @@
 ; Russel&Norvig AI (Section 3.1.1 p 78.)
 (defrecord Node [state actions path path-cost])
 
-(defn- child-node [problem parent action]
+(defn child-node [problem parent action]
   (let [state (result problem (:state parent) action)]
     (map->Node
       {:state state
@@ -58,21 +58,41 @@
   (best-first problem (fn [^Node node] (+ (:path-cost node) (h node)))))
 
 (defn breadth-first [problem]
-  (let [start (initial-state problem)]
-    (loop [explored #{}
-           frontier (conj (clojure.lang.PersistentQueue/EMPTY)
-                      (map->Node {:state start :actions [] :path [start] :path-cost 0}))]
-      (let [node (peek frontier)]
-        (cond
-          (empty? frontier) ; no solution
-          nil
-
-          (goal? problem (:state node))
-          (dissoc node :state)
-
-          :else
+  (let [start-state (initial-state problem)
+        start-node  (map->Node {:state start-state :actions [] :path [start-state] :path-cost 0})]
+    (loop [best nil, explored #{}, frontier [[start-state start-node]]]
+      (if-let [[state node] (first frontier)]
+        (if (goal? problem state)
           (recur
-            (conj explored (:state node))
-            (reduce conj (pop frontier) (->> (actions problem (:state node))
-                                             (map (partial child-node problem node))
-                                             (remove #(explored (:state %)))))))))))
+            (if best
+              (min-key :path-cost best node)
+              node)
+            (conj explored state)
+            (rest frontier))
+          (let [children (for [action (actions problem state)
+                               :let [c (child-node problem node action)
+                                     s (:state c)]
+                               :when (not (explored s))]
+                           [s c])]
+            (recur best (conj explored state) (into (rest frontier) children))))
+        best))))
+
+(defn depth-first [problem]
+  (let [start-state (initial-state problem)
+        start-node  (map->Node {:state start-state :actions [] :path [start-state] :path-cost 0})]
+    (loop [best nil, explored #{}, frontier [[start-state start-node]]]
+      (if-let [[state node] (peek frontier)]
+        (if (goal? problem state)
+          (recur
+            (if best
+              (min-key :path-cost best node)
+              node)
+            (conj explored state)
+            (pop frontier))
+          (let [children (for [action (actions problem state)
+                               :let [c (child-node problem node action)
+                                     s (:state c)]
+                               :when (not (explored s))]
+                           [s c])]
+            (recur best (conj explored state) (into (pop frontier) children))))
+        best))))
